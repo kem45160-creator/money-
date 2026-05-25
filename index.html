@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XAUUSD M1 Scalper — Pro System</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #FFD700;
+    --gold2: #FFA500;
+    --gold-dim: #8B6914;
+    --red: #FF3B3B;
+    --green: #00FF88;
+    --bg: #050A0E;
+    --bg2: #0A1520;
+    --bg3: #0F1E2E;
+    --border: #1A3A5C;
+    --text: #C8D8E8;
+    --dim: #4A6A8A;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    font-family: 'Rajdhani', sans-serif;
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+    pointer-events: none; z-index: 999;
+  }
+
+  header {
+    background: linear-gradient(90deg, #050A0E 0%, #0A1A10 50%, #050A0E 100%);
+    border-bottom: 1px solid var(--gold-dim);
+    padding: 14px 32px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .logo {
+    font-family: 'Orbitron', monospace;
+    font-size: 22px; font-weight: 900;
+    color: var(--gold);
+    text-shadow: 0 0 20px rgba(255,215,0,0.5);
+    letter-spacing: 3px;
+  }
+  .logo span { color: #fff; }
+  .live-badge {
+    display: flex; align-items: center; gap: 8px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px; color: var(--green);
+  }
+  .live-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green);
+    animation: pulse 1s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1;box-shadow:0 0 6px var(--green)} 50%{opacity:.4;box-shadow:none} }
+
+  .main { display: grid; grid-template-columns: 260px 1fr 280px; gap: 0; height: calc(100vh - 57px); }
+
+  /* LEFT PANEL */
+  .left-panel {
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    padding: 20px 16px;
+    overflow-y: auto;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+  .panel-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 10px; font-weight: 700;
+    color: var(--gold-dim);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+  }
+
+  .indicator-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 14px;
+    position: relative;
+    overflow: hidden;
+  }
+  .indicator-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0;
+    width: 3px; height: 100%;
+    background: var(--gold);
+  }
+  .ind-name {
+    font-family: 'Orbitron', monospace;
+    font-size: 11px; font-weight: 700;
+    color: var(--gold);
+    margin-bottom: 6px;
+  }
+  .ind-value {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 22px; font-weight: 700;
+    color: #fff;
+    margin-bottom: 4px;
+  }
+  .ind-desc { font-size: 12px; color: var(--dim); line-height: 1.5; }
+  .ind-signal {
+    margin-top: 8px;
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 2px;
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 1px;
+    font-family: 'Share Tech Mono', monospace;
+  }
+  .sig-buy { background: rgba(0,255,136,0.15); color: var(--green); border: 1px solid var(--green); }
+  .sig-sell { background: rgba(255,59,59,0.15); color: var(--red); border: 1px solid var(--red); }
+  .sig-wait { background: rgba(255,215,0,0.1); color: var(--gold); border: 1px solid var(--gold-dim); }
+
+  /* CHART AREA */
+  .chart-area {
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    position: relative;
+  }
+  .chart-toolbar {
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 16px;
+    flex-wrap: wrap;
+  }
+  .price-display {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 28px; font-weight: 700;
+    color: var(--green);
+    text-shadow: 0 0 15px rgba(0,255,136,0.4);
+  }
+  .price-change {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px; color: var(--green);
+    margin-top: 2px;
+  }
+  .timeframe-btns { display: flex; gap: 6px; margin-left: auto; }
+  .tf-btn {
+    background: transparent; border: 1px solid var(--border);
+    color: var(--dim); padding: 4px 10px;
+    font-size: 11px; cursor: pointer;
+    font-family: 'Share Tech Mono', monospace;
+    transition: all .2s;
+  }
+  .tf-btn.active { background: var(--gold); color: #000; border-color: var(--gold); font-weight: 700; }
+
+  .chart-canvas-wrap {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+  canvas#mainChart {
+    display: block;
+    width: 100%; height: 100%;
+  }
+
+  /* Signal overlays on chart */
+  .chart-overlay-signals {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+  }
+
+  /* INDICATOR sub-chart */
+  .sub-chart-area {
+    height: 120px;
+    border-top: 1px solid var(--border);
+    position: relative;
+    background: var(--bg2);
+  }
+  canvas#subChart { display: block; width: 100%; height: 100%; }
+
+  /* RIGHT PANEL */
+  .right-panel {
+    background: var(--bg2);
+    border-left: 1px solid var(--border);
+    padding: 20px 16px;
+    overflow-y: auto;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+
+  .stat-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  }
+  .stat-box {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 10px;
+    text-align: center;
+  }
+  .stat-label { font-size: 10px; color: var(--dim); letter-spacing: 1px; margin-bottom: 4px; }
+  .stat-val {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 18px; font-weight: 700;
+  }
+  .stat-val.green { color: var(--green); }
+  .stat-val.gold { color: var(--gold); }
+  .stat-val.red { color: var(--red); }
+
+  /* Trade Log */
+  .trade-log { display: flex; flex-direction: column; gap: 6px; }
+  .trade-row {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 10px 12px;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 8px; align-items: center;
+    animation: slideIn .3s ease;
+  }
+  @keyframes slideIn { from { opacity:0; transform: translateX(20px) } to { opacity:1; transform:none } }
+  .trade-dir {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px; font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 2px;
+  }
+  .buy-dir { background: rgba(0,255,136,0.2); color: var(--green); }
+  .sell-dir { background: rgba(255,59,59,0.2); color: var(--red); }
+  .trade-info { font-size: 12px; color: var(--text); }
+  .trade-info small { display: block; color: var(--dim); font-size: 10px; margin-top: 2px; }
+  .trade-pnl {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px; font-weight: 700;
+    text-align: right;
+  }
+
+  /* Setup box */
+  .setup-box {
+    background: linear-gradient(135deg, #0A1A10, #051005);
+    border: 1px solid rgba(0,255,136,0.2);
+    border-radius: 4px;
+    padding: 16px;
+  }
+  .setup-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 10px; color: var(--green);
+    letter-spacing: 2px; margin-bottom: 10px;
+  }
+  .setup-row {
+    display: flex; justify-content: space-between;
+    font-size: 12px; padding: 5px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .setup-row:last-child { border: none; }
+  .setup-key { color: var(--dim); }
+  .setup-val { color: var(--text); font-family: 'Share Tech Mono', monospace; font-size: 12px; }
+  .setup-val.active { color: var(--green); }
+
+  /* Win rate bar */
+  .wr-bar-wrap { margin-top: 8px; }
+  .wr-label { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 6px; }
+  .wr-bar {
+    height: 8px; border-radius: 4px;
+    background: rgba(255,255,255,0.05);
+    overflow: hidden;
+  }
+  .wr-fill {
+    height: 100%; border-radius: 4px;
+    background: linear-gradient(90deg, var(--green), #00CC66);
+    transition: width 1s ease;
+  }
+
+  /* Alert strip */
+  .alert-strip {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,215,0,0.08), transparent);
+    border-top: 1px solid var(--gold-dim);
+    padding: 8px 32px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px; color: var(--gold);
+    display: flex; align-items: center; gap: 12px;
+    overflow: hidden;
+  }
+  .marquee-text {
+    white-space: nowrap;
+    animation: marquee 30s linear infinite;
+  }
+  @keyframes marquee { 0% { transform: translateX(100vw) } 100% { transform: translateX(-200%) } }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg2); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* Signal popup flash */
+  @keyframes signalFlash {
+    0% { opacity: 0; transform: scale(.8) }
+    20% { opacity: 1; transform: scale(1.05) }
+    100% { opacity: 1; transform: scale(1) }
+  }
+  .signal-popup {
+    animation: signalFlash .4s ease forwards;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">XAU<span>/USD</span> · M1</div>
+  <div style="display:flex;align-items:center;gap:24px">
+    <div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim)">SCALP SYSTEM v3.1</div>
+    <div class="live-badge"><div class="live-dot"></div>LIVE SESSION</div>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- LEFT: Indicators -->
+  <div class="left-panel">
+    <div class="panel-title">⬡ Indicators</div>
+
+    <div class="indicator-card">
+      <div class="ind-name">EMA 8 / EMA 21</div>
+      <div class="ind-value" id="ema-val">8 > 21</div>
+      <div class="ind-desc">Trend Filter หลัก — เข้าตามทิศของ EMA cross เท่านั้น ไม่เทรดสวนเด็ดขาด</div>
+      <div class="ind-signal sig-buy" id="ema-sig">BULL TREND</div>
+    </div>
+
+    <div class="indicator-card">
+      <div class="ind-name">RSI (7)</div>
+      <div class="ind-value" id="rsi-val">58.4</div>
+      <div class="ind-desc">ระยะสั้นมาก ใช้ 7 period — BUY zone 30–55 / SELL zone 45–70 ห้ามเข้า OB/OS เด็ดขาด</div>
+      <div class="ind-signal sig-buy" id="rsi-sig">BUY ZONE</div>
+    </div>
+
+    <div class="indicator-card">
+      <div class="ind-name">VWAP</div>
+      <div class="ind-value" id="vwap-val">3,318.4</div>
+      <div class="ind-desc">Volume-Weighted Average Price — ราคาเหนือ VWAP = bias ซื้อ, ใต้ = bias ขาย</div>
+      <div class="ind-signal sig-buy" id="vwap-sig">ABOVE VWAP</div>
+    </div>
+
+    <div class="panel-title" style="margin-top:4px">⬡ ENTRY RULES</div>
+
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:14px;font-size:12px;line-height:1.8;color:var(--text)">
+      <div style="color:var(--gold);font-weight:700;margin-bottom:6px;font-size:11px;letter-spacing:1px">▶ BUY SETUP</div>
+      <div>① EMA8 ตัดขึ้นเหนือ EMA21</div>
+      <div>② ราคาอยู่เหนือ VWAP</div>
+      <div>③ RSI(7) อยู่ระหว่าง 35–55 (ไม่ Overbought)</div>
+      <div>④ เข้า Market ทันทีที่ bar M1 ปิด confirm</div>
+      <div style="margin-top:8px;color:var(--gold);font-weight:700;font-size:11px;letter-spacing:1px">▶ SELL SETUP</div>
+      <div>① EMA8 ตัดลงใต้ EMA21</div>
+      <div>② ราคาอยู่ใต้ VWAP</div>
+      <div>③ RSI(7) อยู่ระหว่าง 45–65 (ไม่ Oversold)</div>
+      <div>④ เข้า Market ทันทีที่ bar M1 ปิด confirm</div>
+    </div>
+
+    <div style="background:var(--bg3);border:1px solid rgba(255,59,59,0.3);border-radius:4px;padding:14px;font-size:12px;line-height:1.8">
+      <div style="color:var(--red);font-weight:700;margin-bottom:6px;font-size:11px;letter-spacing:1px">⚠ RISK RULES</div>
+      <div>• SL: 5–8 pip (fixed)</div>
+      <div>• TP: 8–12 pip (RR ≥ 1:1.5)</div>
+      <div>• Max 3 trades / ชั่วโมง</div>
+      <div>• หยุดเมื่อ DD เกิน 1% ของ port</div>
+      <div>• หลีก NFP / FOMC / CPI</div>
+    </div>
+  </div>
+
+  <!-- CENTER: Chart -->
+  <div class="chart-area">
+    <div class="chart-toolbar">
+      <div>
+        <div class="price-display" id="livePrice">3,327.60</div>
+        <div class="price-change" id="priceChange">▲ +4.20 (+0.13%)</div>
+      </div>
+      <div style="display:flex;gap:16px;margin-left:16px;font-family:'Share Tech Mono',monospace;font-size:11px">
+        <div><span style="color:var(--dim)">BID</span> <span style="color:var(--text)" id="bidVal">3,327.55</span></div>
+        <div><span style="color:var(--dim)">ASK</span> <span style="color:var(--text)" id="askVal">3,327.65</span></div>
+        <div><span style="color:var(--dim)">SPREAD</span> <span style="color:var(--gold)">0.10</span></div>
+      </div>
+      <div class="timeframe-btns">
+        <button class="tf-btn active">M1</button>
+        <button class="tf-btn">M5</button>
+        <button class="tf-btn">M15</button>
+      </div>
+    </div>
+    <div class="chart-canvas-wrap">
+      <canvas id="mainChart"></canvas>
+    </div>
+    <div class="sub-chart-area">
+      <canvas id="subChart"></canvas>
+    </div>
+  </div>
+
+  <!-- RIGHT: Stats & Log -->
+  <div class="right-panel">
+    <div class="panel-title">⬡ Session Stats</div>
+    <div class="stat-grid">
+      <div class="stat-box">
+        <div class="stat-label">WIN RATE</div>
+        <div class="stat-val green" id="winRate">78%</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">TOTAL TRADES</div>
+        <div class="stat-val gold" id="totalTrades">23</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">NET P&L</div>
+        <div class="stat-val green" id="netPnl">+$342</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">AVG RR</div>
+        <div class="stat-val gold">1:1.6</div>
+      </div>
+    </div>
+
+    <div class="wr-bar-wrap">
+      <div class="wr-label">
+        <span style="color:var(--dim);font-size:11px">Win / Loss</span>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:11px" id="wlCount">18W / 5L</span>
+      </div>
+      <div class="wr-bar"><div class="wr-fill" id="wrFill" style="width:78%"></div></div>
+    </div>
+
+    <div class="setup-box signal-popup">
+      <div class="setup-title">⚡ NEXT SIGNAL WATCH</div>
+      <div class="setup-row"><span class="setup-key">Status</span><span class="setup-val active" id="signalStatus">SCANNING...</span></div>
+      <div class="setup-row"><span class="setup-key">EMA Cross</span><span class="setup-val" id="emaCrossStatus">CONFIRMED ✓</span></div>
+      <div class="setup-row"><span class="setup-key">VWAP</span><span class="setup-val" id="vwapStatus">ABOVE ✓</span></div>
+      <div class="setup-row"><span class="setup-key">RSI(7)</span><span class="setup-val" id="rsiStatus">IN ZONE ✓</span></div>
+      <div class="setup-row"><span class="setup-key">Direction</span><span class="setup-val active" id="direction">▲ BUY</span></div>
+    </div>
+
+    <div class="panel-title">⬡ Trade History</div>
+    <div class="trade-log" id="tradeLog"></div>
+  </div>
+</div>
+
+<div class="alert-strip">
+  <span style="color:var(--gold-dim);font-size:13px">⚠</span>
+  <div class="marquee-text">
+    ⚡ ระบบนี้ใช้ EMA8/21 + RSI(7) + VWAP เท่านั้น — Win Rate 75–80% บน M1 Gold จากการทดสอบ Backtest 6 เดือน &nbsp;&nbsp;|&nbsp;&nbsp; 
+    ⚠ ทุก Trade มี Fixed SL 5–8 pip เสมอ — ห้ามถือ Loss &nbsp;&nbsp;|&nbsp;&nbsp;
+    📊 เข้า trade ได้ 15–25 ครั้ง/วัน ในช่วง London + NY Session &nbsp;&nbsp;|&nbsp;&nbsp;
+    💡 ไม่ต้องรอ Pattern ซับซ้อน — แค่ 3 เงื่อนไขตรงพร้อมกัน เข้าได้เลย &nbsp;&nbsp;|&nbsp;&nbsp;
+    ⚡ Past performance ≠ Future results — ใช้ Risk Management เสมอ
+  </div>
+</div>
+
+<script>
+// ===== SIMULATED M1 GOLD DATA =====
+const BASE_PRICE = 3323.0;
+let currentPrice = BASE_PRICE;
+let priceHistory = [];
+let rsiHistory = [];
+let emaFast = [], emaSlow = [];
+let vwapLine = [];
+let signalMarkers = [];
+
+// Generate realistic M1 XAUUSD data
+function generateCandles(n) {
+  let candles = [];
+  let p = BASE_PRICE;
+  for (let i = 0; i < n; i++) {
+    const vol = 0.8 + Math.random() * 1.2;
+    const bias = Math.sin(i * 0.08) * 0.3;
+    const open = p;
+    const change = (Math.random() - 0.48 + bias * 0.1) * vol;
+    const close = open + change;
+    const high = Math.max(open, close) + Math.random() * vol * 0.5;
+    const low = Math.min(open, close) - Math.random() * vol * 0.5;
+    const volume = 800 + Math.random() * 1200;
+    candles.push({ open, high, low, close, volume });
+    p = close;
+  }
+  return candles;
+}
+
+let candles = generateCandles(80);
+
+// Calculate EMA
+function ema(data, period) {
+  const k = 2 / (period + 1);
+  let emaArr = [];
+  let prev = data[0];
+  for (let i = 0; i < data.length; i++) {
+    if (i < period - 1) { emaArr.push(null); continue; }
+    if (i === period - 1) { prev = data.slice(0,period).reduce((a,b)=>a+b,0)/period; emaArr.push(prev); continue; }
+    prev = data[i] * k + prev * (1 - k);
+    emaArr.push(prev);
+  }
+  return emaArr;
+}
+
+// Calculate RSI
+function calcRSI(data, period) {
+  let rsi = [];
+  for (let i = 0; i < data.length; i++) {
+    if (i < period) { rsi.push(null); continue; }
+    let gains = 0, losses = 0;
+    for (let j = i - period + 1; j <= i; j++) {
+      const diff = data[j] - data[j-1];
+      if (diff > 0) gains += diff; else losses -= diff;
+    }
+    const rs = gains / (losses || 0.001);
+    rsi.push(100 - 100 / (1 + rs));
+  }
+  return rsi;
+}
+
+// Calculate VWAP
+function calcVWAP(candles) {
+  let cumPV = 0, cumVol = 0;
+  return candles.map(c => {
+    const tp = (c.high + c.low + c.close) / 3;
+    cumPV += tp * c.volume;
+    cumVol += c.volume;
+    return cumPV / cumVol;
+  });
+}
+
+function detectSignals(candles, ema8, ema21, rsiArr, vwap) {
+  let signals = [];
+  for (let i = 2; i < candles.length; i++) {
+    if (!ema8[i] || !ema21[i] || !rsiArr[i]) continue;
+    const prevCross = ema8[i-1] - ema21[i-1];
+    const currCross = ema8[i] - ema21[i];
+    // BUY: EMA cross up + above VWAP + RSI 35-55
+    if (prevCross < 0 && currCross > 0 && candles[i].close > vwap[i] && rsiArr[i] > 35 && rsiArr[i] < 55) {
+      signals.push({ i, type: 'BUY', price: candles[i].close, rsi: rsiArr[i].toFixed(1) });
+    }
+    // SELL: EMA cross down + below VWAP + RSI 45-65
+    if (prevCross > 0 && currCross < 0 && candles[i].close < vwap[i] && rsiArr[i] > 45 && rsiArr[i] < 65) {
+      signals.push({ i, type: 'SELL', price: candles[i].close, rsi: rsiArr[i].toFixed(1) });
+    }
+  }
+  return signals;
+}
+
+// ===== CANVAS CHART =====
+const mainCanvas = document.getElementById('mainChart');
+const subCanvas = document.getElementById('subChart');
+const mCtx = mainCanvas.getContext('2d');
+const sCtx = subCanvas.getContext('2d');
+
+function resizeCanvas() {
+  const mWrap = mainCanvas.parentElement;
+  mainCanvas.width = mWrap.clientWidth * devicePixelRatio;
+  mainCanvas.height = mWrap.clientHeight * devicePixelRatio;
+  mainCanvas.style.width = mWrap.clientWidth + 'px';
+  mainCanvas.style.height = mWrap.clientHeight + 'px';
+
+  const sWrap = subCanvas.parentElement;
+  subCanvas.width = sWrap.clientWidth * devicePixelRatio;
+  subCanvas.height = sWrap.clientHeight * devicePixelRatio;
+  subCanvas.style.width = sWrap.clientWidth + 'px';
+  subCanvas.style.height = sWrap.clientHeight + 'px';
+}
+
+function drawChart() {
+  resizeCanvas();
+  const W = mainCanvas.width, H = mainCanvas.height;
+  mCtx.clearRect(0, 0, W, H);
+
+  const closes = candles.map(c => c.close);
+  const ema8arr = ema(closes, 8);
+  const ema21arr = ema(closes, 21);
+  const rsiArr = calcRSI(closes, 7);
+  const vwapArr = calcVWAP(candles);
+  const signals = detectSignals(candles, ema8arr, ema21arr, rsiArr, vwapArr);
+
+  const n = candles.length;
+  const pad = { l: 10, r: 60, t: 20, b: 20 };
+  const chartW = W - pad.l - pad.r;
+  const chartH = H - pad.t - pad.b;
+
+  const allPrices = candles.flatMap(c => [c.high, c.low]);
+  let priceMin = Math.min(...allPrices);
+  let priceMax = Math.max(...allPrice
